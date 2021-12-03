@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo3
+  labels:
+    app: mongo3
+spec:
+  type: NodePort
+  ports:
+  - name: mongo
+    port: 40003
+    targetPort: 27017
+    nodePort: 30020
+  selector:
+    app: mongo3

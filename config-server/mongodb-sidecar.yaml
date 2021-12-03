@@ -1,0 +1,112 @@
+kind: Template
+apiVersion: v1
+metadata:
+  name: mongodb-replica-set
+  annotations:
+    description: "MongoDB Replica-Set (based on StatefulSet)."
+    iconClass: "icon-mongodb"
+    tags: "database,mongodb,replication"
+
+objects:
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      name: mongo
+      labels:
+        name: mongo
+    spec:
+      ports:
+        - port: 27017
+          targetPort: 27017
+      clusterIP: None
+      selector:
+        role: mongo
+
+  - apiVersion: apps/v1
+    kind: StatefulSet
+    metadata:
+      name: mongo
+    spec:
+      serviceName: "mongo"
+      replicas: 3
+      selector:
+        matchLabels:
+          role: mongo
+      template:
+        metadata:
+          labels:
+            role: mongo
+            environment: test
+        spec:
+          terminationGracePeriodSeconds: 10
+          containers:
+            - name: mongo
+              image: "${Mongo_image}"
+              imagePullPolicy: IfNotPresent
+              command:
+                - mongod
+                - "--configsvr"
+                - "--replSet"
+                - cfgrs 
+                - "--port"
+                - "27017"
+                - "--dbpath"
+                - "/data/db"
+                - "--bind_ip"
+                - "0.0.0.0"
+
+              resources:
+                requests:
+                  cpu: 200m
+                  memory: 0.5Gi
+                limits:
+                  cpu: "${CPU_limit}"
+                  memory: "${Memory_limit}"
+
+              volumeMounts:
+                - name: mongo-persistent-storage
+                  mountPath: /data/db
+      updateStrategy:
+        type: RollingUpdate
+      volumeClaimTemplates:
+        - metadata:
+            name: mongo-persistent-storage
+            annotations:
+              volume.beta.kubernetes.io/storage-class: "managed-nfs-storage"
+          spec:
+            accessModes: ["ReadWriteMany"]
+            resources:
+              requests:
+                storage: "${storage_volume}"
+            reclaimPolicy:
+
+parameters:
+  - name: Mongo_image
+    description: Image name and tag for mongodb
+    value: mongo:4.0
+    required: true
+
+  - name: Mongo_sidecar_image
+    description: Image name and tag for sidecar container
+    value: cvallance/mongo-k8s-sidecar
+    required: true
+
+  - name: no_of_replicas
+    description: Number of replicas for the replica set.
+    value: "3"
+    required: true
+
+  - name: storage_volume
+    description: Volume space available for data, e.g. 512Mi, 2Gi
+    value: "5Gi"
+    required: true
+
+  - name: Memory_limit
+    description: RAM limit for the mongodb , e.g. 512Mi, 2Gi
+    value: "1Gi"
+    required: true
+
+  - name: CPU_limit
+    description: CPU limit for the mongodb
+    value: "500m"
+    required: true

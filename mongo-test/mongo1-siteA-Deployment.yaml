@@ -1,0 +1,124 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongo1-4
+spec:
+  selector:
+    matchLabels:
+      role: mongo1-4 # has to match .spec.template.metadata.labels
+  serviceName: mongo1-4
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        role: mongo1-4
+        tier: maindb
+        replicaset: rs0
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: replicaset
+                  operator: In
+                  values:
+                  - rs0
+              topologyKey: kubernetes.io/hostname
+      terminationGracePeriodSeconds: 10
+      containers:
+        - name: mongo1-4-container
+          image: mongo:4.0
+          imagePullPolicy: IfNotPresent
+          command:
+            - "mongod"
+            - "--bind_ip"
+            - "0.0.0.0"
+            - "--replSet"
+            - "rs0"
+            - "--smallfiles"
+            - "--noprealloc"
+          resources:
+            requests:
+              cpu: 50m
+              memory: 100Mi
+          ports:
+            - containerPort: 27017
+          volumeMounts:
+            - name: mongo1-4-persistent-storage-claim
+              mountPath: /mongo-disk
+  volumeClaimTemplates:
+  - metadata:
+      name: mongo1-4-persistent-storage-claim
+      annotations:
+        volume.beta.kubernetes.io/storage-class: "managed-nfs-storage"
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongo1-5
+spec:
+  selector:
+    matchLabels:
+      role: mongo1-5 # has to match .spec.template.metadata.labels
+  serviceName: mongo1-5
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        role: mongo1-5
+        tier: maindb
+        replicaset: rs0
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: replicaset
+                  operator: In
+                  values:
+                  - rs0
+              topologyKey: kubernetes.io/hostname
+      terminationGracePeriodSeconds: 10
+      containers:
+        - name: mongo1-5-container
+          image: mongo:4.0
+          imagePullPolicy: IfNotPresent
+          command:
+            - "mongod"
+            - "--bind_ip"
+            - "0.0.0.0"
+            - "--replSet"
+            - "rs0"
+            - "--smallfiles"
+            - "--noprealloc"
+          resources:
+            requests:
+              cpu: 50m
+              memory: 100Mi
+          ports:
+            - containerPort: 27017
+          volumeMounts:
+            - name: mongo1-5-persistent-storage-claim
+              mountPath: /mongo-disk
+  volumeClaimTemplates:
+  - metadata:
+      name: mongo1-5-persistent-storage-claim
+      annotations:
+        volume.beta.kubernetes.io/storage-class: "managed-nfs-storage"
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi

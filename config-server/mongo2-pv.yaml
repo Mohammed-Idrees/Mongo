@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  finalizers:
+  - kubernetes.io/pv-protection
+  name: mongo2
+spec:
+  accessModes:
+  - ReadWriteMany
+  volumeMode: Filesystem
+  capacity:
+    storage: 1Gi
+  nfs:
+    path: /mnt/k8sMount/mongo2
+    server: 167.254.204.230
+

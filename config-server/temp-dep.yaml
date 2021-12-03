@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongos
+  namespace: config-servers
+spec:
+  selector:
+    matchLabels:
+      role: mongos
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        role: mongos
+        tier: routers
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+        - name: mongos-container
+          image: mongo
+          imagePullPolicy: IfNotPresent
+          command:
+            - "mongos"
+            - "--port"
+            - "27017"
+            - "--bind_ip"
+            - "0.0.0.0"
+            - "--configdb"
+            - "Shard1/mongodb-configdb-0.mongodb-configdb-headless-service.config-servers.svc.cluster.local:27019"
+          resources:
+            requests:
+              cpu: 50m
+              memory: 100Mi
+          ports:
+            - containerPort: 27017

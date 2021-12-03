@@ -1,0 +1,218 @@
+kind: Template
+apiVersion: v1
+metadata:
+  name: mongodb-replica-set
+  annotations:
+    description: "MongoDB Replica-Set (based on StatefulSet)."
+    iconClass: "icon-mongodb"
+    tags: "database,mongodb,replication"
+
+objects:
+  - apiVersion: v1
+    kind: PersistentVolume
+    metadata:
+      finalizers:
+      - kubernetes.io/pv-protection
+      name: mongo-0
+    spec:
+      accessModes:
+      - ReadWriteMany
+      capacity:
+        storage: 5Gi
+      nfs:
+        path: /mnt/k8sMount/mongo-0
+        server: 167.254.204.230
+      persistentVolumeReclaimPolicy: Retain
+  - apiVersion: v1
+    kind: PersistentVolume
+    metadata:
+      finalizers:
+      - kubernetes.io/pv-protection
+      name: mongo-1
+    spec:
+      accessModes:
+      - ReadWriteMany
+      capacity:
+        storage: 5Gi
+      nfs:
+        path: /mnt/k8sMount/mongo-1
+        server: 167.254.204.230
+      persistentVolumeReclaimPolicy: Retain
+          
+  - apiVersion: v1
+    kind: PersistentVolume
+    metadata:
+      finalizers:
+      - kubernetes.io/pv-protection
+      name: mongo-2
+    spec:
+      accessModes:
+      - ReadWriteMany
+      capacity:
+        storage: 5Gi
+      nfs:
+        path: /mnt/k8sMount/mongo-2
+        server: 167.254.204.230
+      persistentVolumeReclaimPolicy: Retain
+  
+  
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      finalizers:
+      - kubernetes.io/pvc-protection
+      name: database-mongo-0
+    spec:
+      accessModes:
+      - ReadWriteMany
+      resources:
+        requests:
+          storage: 5Gi
+      storageClassName: ""
+      volumeName: mongo-0
+  
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      finalizers:
+      - kubernetes.io/pvc-protection
+      name: database-mongo-1
+    spec:
+      accessModes:
+      - ReadWriteMany
+      resources:
+        requests:
+          storage: 5Gi
+      storageClassName: ""
+      volumeName: mongo-1
+  
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      finalizers:
+      - kubernetes.io/pvc-protection
+      name: database-mongo-2
+    spec:
+      accessModes:
+      - ReadWriteMany
+      resources:
+        requests:
+          storage: 5Gi
+      storageClassName: ""
+      volumeName: mongo-2
+
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      name: mongo
+      labels:
+        name: mongo
+    spec:
+      ports:
+        - port: 27017
+          targetPort: 27017
+      clusterIP: None
+      selector:
+        role: mongo
+
+  - apiVersion: apps/v1
+    kind: StatefulSet
+    metadata:
+      name: mongo
+    spec:
+      serviceName: "mongo"
+      replicas: 3
+      selector:
+        matchLabels:
+          role: mongo
+      template:
+        metadata:
+          labels:
+            role: mongo
+            environment: test
+        spec:
+          terminationGracePeriodSeconds: 10
+          containers:
+            - name: mongo
+              lifecycle:
+                podStart:
+                  exec:
+                    command:
+                      - "cat"
+                      - "167.254.204.230"
+                      - "api.lab.okd.local"
+                      - ">"
+                      - "/etc/hosts"
+              image: "${Mongo_image}"
+              command:
+                - mongod
+                - "--replSet"
+                - rs0
+                - "--bind_ip"
+                - 0.0.0.0
+                - "--smallfiles"
+                - "--noprealloc"
+              ports:
+                - containerPort: 27017
+
+              resources:
+                requests:
+                  cpu: 200m
+                  memory: 0.5Gi
+                limits:
+                  cpu: "${CPU_limit}"
+                  memory: "${Memory_limit}"
+
+              volumeMounts:
+                - name: database
+                  mountPath: /data/db
+            - name: mongo-sidecar
+              image: "${Mongo_sidecar_image}"
+              env:
+                - name: MONGO_SIDECAR_POD_LABELS
+                  value: "role=mongo,environment=test"
+      updateStrategy:
+        type: RollingUpdate
+      volumeClaimTemplates:
+        - metadata:
+            name: database
+            #annotations:
+            #  volume.beta.kubernetes.io/storage-class: "managed-nfs-storage"
+          spec:
+            accessModes: ["ReadWriteMany"]
+            resources:
+              requests:
+                storage: 5Gi
+            storageClassName: "manual"
+            #reclaimPolicy:
+
+parameters:
+  - name: Mongo_image
+    description: Image name and tag for mongodb
+    value: mongo:4.0
+    required: true
+
+  - name: Mongo_sidecar_image
+    description: Image name and tag for sidecar container
+    value: cvallance/mongo-k8s-sidecar
+    required: true
+
+  - name: no_of_replicas
+    description: Number of replicas for the replica set.
+    value: "3"
+    required: true
+
+  - name: storage_volume
+    description: Volume space available for data, e.g. 512Mi, 2Gi
+    value: "5Gi"
+    required: true
+
+  - name: Memory_limit
+    description: RAM limit for the mongodb , e.g. 512Mi, 2Gi
+    value: "8Gi"
+    required: true
+
+  - name: CPU_limit
+    description: CPU limit for the mongodb
+    value: "500m"
+    required: true

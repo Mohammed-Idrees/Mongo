@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo1-4
+  labels:
+    name: mongo1-4
+spec:
+  type: NodePort
+  ports:
+  - port: 27017
+    targetPort: 27017
+    nodePort: 30021
+  selector:
+    role: mongo1-4
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo1-5
+  labels:
+    name: mongo1-5
+spec:
+  type: NodePort
+  ports:
+  - port: 27017
+    targetPort: 27017
+    nodePort: 30022
+  selector:
+    role: mongo1-5
+
